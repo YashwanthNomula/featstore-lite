@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "featstore-lite"
+version = "1.0.0"
+description = "Tiny feature store: versioned features, TTLs, and point-in-time-correct joins that never leak the future"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+authors = [{ name = "YashwanthNomula", email = "YashwanthNomula@users.noreply.github.com" }]
+keywords = ["feature-store", "mlops", "ml-engineering", "point-in-time", "training-data"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.scripts]
+fstore = "featstore_lite.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["featstore_lite*"]
