@@ -84,6 +84,28 @@ fstore join --dir ./store --events labels.csv \
 fstore latest --dir ./store --feature spend_30d
 ```
 
+**Audit** a feature's version history — who changed what, when, and how many rows each version produced (`--json` for machines; unknown names fail closed with a spelling suggestion):
+
+```bash
+fstore history --dir ./store spend_30d
+```
+
+```
+featstore-lite · version history: spend_30d
+entity: customer   versions: 2   rows: 5
+
+  version  valid_from  dtype  ttl       rows  entities  description
+  v1       2026-09-01  float  2592000s  3     3         trailing 30d spend
+  v2       2026-09-15  float  2592000s  2     2         rewritten pipeline, tax-inclusive
+```
+
+Each ingested row is pinned to exactly one version — the version that was live at the row's timestamp (or the explicitly pinned one) — so `rows` is an exact attribution, not an estimate. A feature with no rows yet still lists its versions (exit 0); a bad name exits 1:
+
+```
+$ fstore history --dir ./store spend_30x
+error: feature 'spend_30x' is not registered (did you mean 'spend_30d'?)
+```
+
 ### Join semantics (the important part)
 
 For each `(entity_id, event_ts)`:
@@ -112,8 +134,20 @@ See `examples/quickstart.py`.
 ## Tests
 
 ```bash
-python -m pytest tests/ -q   # 37 tests
+python -m pytest tests/ -q   # 48 tests
 ```
+
+## Command reference
+
+| command | what it does | exit codes |
+|---|---|---|
+| `fstore init --dir DIR` | create a store | 0 |
+| `fstore register ...` | register a feature / new version | 0 / 1 on bad input |
+| `fstore ingest ...` | ingest rows from CSV | 0 / 1 if rows skipped |
+| `fstore history FEATURE` | version audit trail | 0 / 1 on unknown feature |
+| `fstore latest ...` | materialized view per entity | 0 / 1 on unknown feature |
+| `fstore join ...` | point-in-time join | 0 / 3 if `--compare-naive` finds leaks |
+| `fstore demo` | scripted churn demo | 0 |
 
 ## What's deliberately missing
 

@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import argparse
 import csv
+import difflib
 import json
 import sys
 
 from .demo import run_demo
 from .join import compare_with_naive, naive_join, point_in_time_join, read_events_csv
-from .report import report_html, report_json, report_terminal
+from .report import history_json, history_terminal, report_html, report_json, report_terminal
 from .schema import DTYPES, format_ts
 from .store import FeatureStore
 
@@ -84,6 +85,26 @@ def cmd_latest(args) -> int:
     for entity in sorted(mat):
         val, ts, ver = mat[entity]
         print(f"  {entity:<16} {val!s:<12} as of {format_ts(ts)}  ({ver})")
+    return 0
+
+
+def cmd_history(args) -> int:
+    store = FeatureStore(args.dir)
+    try:
+        hist = store.feature_history(args.feature)
+    except KeyError:
+        suggestion = ""
+        matches = difflib.get_close_matches(args.feature, sorted(store.features),
+                                            n=1, cutoff=0.6)
+        if matches:
+            suggestion = f" (did you mean {matches[0]!r}?)"
+        print(f"error: feature {args.feature!r} is not registered{suggestion}",
+              file=sys.stderr)
+        return 1
+    if args.json:
+        print(history_json(hist))
+    else:
+        print(history_terminal(hist))
     return 0
 
 
@@ -171,6 +192,13 @@ def build_parser() -> argparse.ArgumentParser:
     l.add_argument("--version", default=None)
     l.add_argument("--json", action="store_true")
     l.set_defaults(func=cmd_latest)
+
+    h = sub.add_parser("history", help="version audit trail for a feature (who changed what, when)")
+    h.add_argument("--dir", default="featstore")
+    h.add_argument("feature", help="feature name")
+    h.add_argument("--json", action="store_true",
+                   help="machine-readable version list")
+    h.set_defaults(func=cmd_history)
 
     j = sub.add_parser("join", help="point-in-time join events CSV with features")
     j.add_argument("--dir", default="featstore")

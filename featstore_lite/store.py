@@ -171,6 +171,42 @@ class FeatureStore:
         return version, coerced
 
     # --------------------------------------------------------------- reads
+    def feature_history(self, name: str) -> Dict[str, Any]:
+        """Version audit trail for one feature: every registered version with
+        its valid_from/dtype/TTL info, plus how many ingested rows were
+        attributed to each version (each row is pinned to exactly one
+        version — the one that was live at the row's timestamp, or the
+        explicitly pinned one)."""
+        if name not in self.features:
+            raise KeyError(f"feature {name!r} is not registered")
+        feature = self.features[name]
+        versions = sorted(feature.versions.values(), key=lambda v: v.valid_from)
+        version_rows = []
+        for fv in versions:
+            rows = 0
+            entities = set()
+            for (f, v, entity_id), timeline in self._timelines.items():
+                if f == name and v == fv.version:
+                    rows += len(timeline)
+                    entities.add(entity_id)
+            version_rows.append(
+                {
+                    "version": fv.version,
+                    "valid_from": fv.valid_from,
+                    "dtype": fv.dtype,
+                    "ttl_seconds": fv.ttl_seconds,
+                    "description": fv.description,
+                    "rows": rows,
+                    "entities": len(entities),
+                }
+            )
+        return {
+            "feature": name,
+            "entity": feature.entity,
+            "versions": version_rows,
+            "total_rows": sum(v["rows"] for v in version_rows),
+        }
+
     def timeline(self, name: str, version: str, entity_id: str) -> List[Tuple[float, Any]]:
         return self._timelines.get((name, version, str(entity_id)), [])
 

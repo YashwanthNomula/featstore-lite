@@ -40,6 +40,63 @@ def report_terminal(rows: List[Dict[str, Any]], stats: Dict[str, Any], specs: Li
     return "\n".join(lines)
 
 
+def history_terminal(hist: Dict[str, Any]) -> str:
+    """Version audit trail: every registered version of one feature."""
+    lines = []
+    lines.append(f"featstore-lite · version history: {hist['feature']}")
+    lines.append(f"entity: {hist['entity']}   versions: {len(hist['versions'])}"
+                f"   rows: {hist['total_rows']}")
+    lines.append("")
+    if not hist["versions"]:
+        lines.append("  no versions registered")
+        return "\n".join(lines)
+    rows = []
+    for v in hist["versions"]:
+        ttl = v["ttl_seconds"]
+        if ttl is None:
+            ttl_s = "—"
+        elif float(ttl).is_integer():
+            ttl_s = f"{int(ttl)}s"
+        else:
+            ttl_s = f"{ttl:g}s"
+        rows.append({
+            "version": v["version"],
+            "valid_from": format_ts(v["valid_from"]),
+            "dtype": v["dtype"],
+            "ttl": ttl_s,
+            "rows": str(v["rows"]),
+            "entities": str(v["entities"]),
+            "description": v["description"] or "—",
+        })
+    header = ["version", "valid_from", "dtype", "ttl", "rows", "entities", "description"]
+    widths = {h: max(len(h), max(len(r[h]) for r in rows)) for h in header}
+    lines.append("  " + "  ".join(h.ljust(widths[h]) for h in header))
+    for r in rows:
+        lines.append("  " + "  ".join(r[h].ljust(widths[h]) for h in header))
+    return "\n".join(lines)
+
+
+def history_json(hist: Dict[str, Any]) -> str:
+    versions = [
+        {
+            "version": v["version"],
+            "valid_from": v["valid_from"],
+            "valid_from_date": format_ts(v["valid_from"]),
+            "dtype": v["dtype"],
+            "ttl_seconds": v["ttl_seconds"],
+            "description": v["description"],
+            "rows": v["rows"],
+            "entities": v["entities"],
+        }
+        for v in hist["versions"]
+    ]
+    return json.dumps(
+        {"feature": hist["feature"], "entity": hist["entity"],
+         "versions": versions, "total_rows": hist["total_rows"]},
+        indent=2,
+    )
+
+
 def report_json(rows: List[Dict[str, Any]], stats: Dict[str, Any],
                 leak: Dict[str, Any] | None = None) -> str:
     payload: Dict[str, Any] = {"stats": stats, "rows": rows}
